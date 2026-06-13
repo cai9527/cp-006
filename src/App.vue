@@ -1,52 +1,56 @@
 <template>
-  <el-container class="app-container">
-    <el-header class="header">
-      <div class="logo">
-        <i class="el-icon-lift"></i>
-        <span class="logo-text">工地升降机管理系统</span>
-      </div>
-      <div class="header-right">
-        <el-dropdown>
-          <span class="user-info">
-            <i class="el-icon-user"></i>
-            <span class="user-name">{{ currentUser.name }}</span>
-          </span>
-          <el-dropdown-menu slot="dropdown">
-            <el-dropdown-item @click.native="logout">退出登录</el-dropdown-item>
-          </el-dropdown-menu>
-        </el-dropdown>
-      </div>
-    </el-header>
-    <el-container>
-      <el-aside class="sidebar">
-        <el-menu :default-active="$route.path" class="menu" router>
-          <el-menu-item index="/monitor">
-            <i class="el-icon-video-camera"></i>
-            <span>实时监控</span>
-          </el-menu-item>
-          <el-menu-item index="/statistics">
-            <i class="el-icon-bar-chart"></i>
-            <span>统计分析</span>
-          </el-menu-item>
-          <el-menu-item index="/maintenance">
-            <i class="el-icon-wrench"></i>
-            <span>维护管理</span>
-          </el-menu-item>
-          <el-menu-item index="/users">
-            <i class="el-icon-user"></i>
-            <span>用户管理</span>
-          </el-menu-item>
-          <el-menu-item index="/alarm">
-            <i class="el-icon-bell"></i>
-            <span>报警预警</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-      <el-main class="main-content">
-        <router-view></router-view>
-      </el-main>
+  <div id="app-root">
+    <router-view v-if="isLoginPage"></router-view>
+    
+    <el-container v-else class="app-container">
+      <el-header class="header">
+        <div class="logo">
+          <i class="el-icon-lift"></i>
+          <span class="logo-text">工地升降机管理系统</span>
+        </div>
+        <div class="header-right">
+          <el-dropdown>
+            <span class="user-info">
+              <i class="el-icon-user"></i>
+              <span class="user-name">{{ currentUser.name }}</span>
+            </span>
+            <el-dropdown-menu slot="dropdown">
+              <el-dropdown-item @click.native="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </el-dropdown>
+        </div>
+      </el-header>
+      <el-container>
+        <el-aside class="sidebar">
+          <el-menu :default-active="$route.path" class="menu" router>
+            <el-menu-item index="/monitor">
+              <i class="el-icon-video-camera"></i>
+              <span>实时监控</span>
+            </el-menu-item>
+            <el-menu-item index="/statistics">
+              <i class="el-icon-bar-chart"></i>
+              <span>统计分析</span>
+            </el-menu-item>
+            <el-menu-item index="/maintenance">
+              <i class="el-icon-wrench"></i>
+              <span>维护管理</span>
+            </el-menu-item>
+            <el-menu-item index="/users">
+              <i class="el-icon-user"></i>
+              <span>用户管理</span>
+            </el-menu-item>
+            <el-menu-item index="/alarm">
+              <i class="el-icon-bell"></i>
+              <span>报警预警</span>
+            </el-menu-item>
+          </el-menu>
+        </el-aside>
+        <el-main class="main-content">
+          <router-view></router-view>
+        </el-main>
+      </el-container>
     </el-container>
-  </el-container>
+  </div>
 </template>
 
 <script>
@@ -59,6 +63,11 @@ export default {
         role: 'admin'
       }
     };
+  },
+  computed: {
+    isLoginPage() {
+      return this.$route.path === '/login';
+    }
   },
   methods: {
     logout() {
@@ -78,6 +87,10 @@ export default {
 
 body {
   font-family: 'Microsoft YaHei', sans-serif;
+}
+
+#app-root {
+  min-height: 100vh;
 }
 
 .app-container {
