@@ -2,7 +2,7 @@
   <div id="app-root">
     <router-view v-if="isLoginPage"></router-view>
     
-    <el-container v-else class="app-container" :style="rootStyle">
+    <el-container v-else class="app-container">
       <el-header class="header">
         <div class="logo">
           <i class="el-icon-lift"></i>
@@ -59,8 +59,8 @@
       </el-header>
       <el-container class="main-layout">
         <el-aside
+          :width="sidebarWidth + 'px'"
           class="sidebar"
-          :style="sidebarStyle"
           @wheel="handleWheel"
         >
           <el-menu
@@ -97,7 +97,9 @@
           </el-menu>
         </el-aside>
         <el-main class="main-content">
-          <router-view></router-view>
+          <div class="content-inner">
+            <router-view></router-view>
+          </div>
         </el-main>
       </el-container>
     </el-container>
@@ -112,6 +114,8 @@ const MIN_SCALE = 0.7;
 const MAX_SCALE = 1.5;
 const STEP = 0.1;
 const STORAGE_KEY = 'sidebar_scale';
+const BASE_SIDEBAR_WIDTH = 200;
+const BASE_CONTENT_PADDING = 20;
 
 export default {
   name: 'App',
@@ -143,15 +147,11 @@ export default {
     zoomPercent() {
       return Math.round(this.sidebarScale * 100);
     },
-    sidebarStyle() {
-      return {
-        '--sb-scale': this.sidebarScale
-      };
+    sidebarWidth() {
+      return Math.round(BASE_SIDEBAR_WIDTH * this.sidebarScale);
     },
-    rootStyle() {
-      return {
-        '--sb-scale': this.sidebarScale
-      };
+    contentPadding() {
+      return Math.round(BASE_CONTENT_PADDING * this.sidebarScale);
     }
   },
   watch: {
@@ -167,6 +167,10 @@ export default {
   created() {
     this.loadUser();
     this.loadScale();
+    this.applyRootStyles();
+  },
+  updated() {
+    this.applyRootStyles();
   },
   methods: {
     loadUser() {
@@ -182,6 +186,20 @@ export default {
           this.sidebarScale = saved;
         }
       } catch (e) {}
+    },
+    applyRootStyles() {
+      const root = document.documentElement;
+      if (root) {
+        root.style.setProperty('--sb-scale', this.sidebarScale);
+        root.style.setProperty('--sb-width', this.sidebarWidth + 'px');
+        root.style.setProperty('--sb-font', (14 * this.sidebarScale) + 'px');
+        root.style.setProperty('--sb-icon', (16 * this.sidebarScale) + 'px');
+        root.style.setProperty('--sb-item-height', (50 * this.sidebarScale) + 'px');
+        root.style.setProperty('--sb-item-padding', (20 * this.sidebarScale) + 'px');
+        root.style.setProperty('--sb-sub-padding', (50 * this.sidebarScale) + 'px');
+        root.style.setProperty('--sb-content-padding', this.contentPadding + 'px');
+        root.style.setProperty('--sb-scroll-width', Math.max(6, 6 * this.sidebarScale) + 'px');
+      }
     },
     zoomIn() {
       this.sidebarScale = Math.min(MAX_SCALE, +(this.sidebarScale + STEP).toFixed(2));
@@ -219,12 +237,14 @@ export default {
 
 :root {
   --sb-scale: 1;
-  --sb-width: calc(200px * var(--sb-scale));
-  --sb-font: calc(14px * var(--sb-scale));
-  --sb-icon: calc(16px * var(--sb-scale));
-  --sb-item-height: calc(50px * var(--sb-scale));
-  --sb-item-padding: calc(20px * var(--sb-scale));
-  --sb-sub-padding: calc(50px * var(--sb-scale));
+  --sb-width: 200px;
+  --sb-font: 14px;
+  --sb-icon: 16px;
+  --sb-item-height: 50px;
+  --sb-item-padding: 20px;
+  --sb-sub-padding: 50px;
+  --sb-content-padding: 20px;
+  --sb-scroll-width: 6px;
 }
 
 body {
@@ -233,18 +253,22 @@ body {
 
 #app-root {
   min-height: 100vh;
+  width: 100%;
 }
 
 .app-container {
   height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .main-layout {
   flex: 1;
   display: flex;
   overflow: hidden;
+  min-width: 0;
 }
 
 .header {
@@ -254,8 +278,10 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0 30px;
-  height: 60px;
+  height: 60px !important;
+  line-height: 60px;
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .logo {
@@ -264,6 +290,7 @@ body {
   font-size: 20px;
   font-weight: bold;
   color: #ffffff;
+  line-height: 1;
 }
 
 .logo i {
@@ -280,6 +307,7 @@ body {
 .header-right {
   display: flex;
   align-items: center;
+  line-height: 1;
 }
 
 .sidebar-zoom-controls {
@@ -335,6 +363,7 @@ body {
   padding: 8px 16px;
   border-radius: 4px;
   transition: background-color 0.2s;
+  line-height: 1;
 }
 
 .user-info:hover {
@@ -352,12 +381,12 @@ body {
 }
 
 .sidebar {
-  width: var(--sb-width) !important;
   background-color: #2f4050 !important;
   flex-shrink: 0;
-  transition: width 0.25s ease;
   overflow-y: auto;
   overflow-x: hidden;
+  transition: width 0.25s ease;
+  height: calc(100vh - 60px);
 }
 
 .sidebar .el-aside {
@@ -368,6 +397,7 @@ body {
   border-right: none;
   background-color: #2f4050 !important;
   width: 100%;
+  height: 100%;
 }
 
 .menu .el-menu {
@@ -390,6 +420,7 @@ body {
   margin-right: calc(10px * var(--sb-scale)) !important;
   width: var(--sb-icon) !important;
   text-align: center;
+  vertical-align: middle;
 }
 
 .menu .el-menu-item:hover {
@@ -422,6 +453,7 @@ body {
   margin-right: calc(10px * var(--sb-scale)) !important;
   width: var(--sb-icon) !important;
   text-align: center;
+  vertical-align: middle;
 }
 
 .menu .el-submenu__title:hover {
@@ -459,30 +491,70 @@ body {
   vertical-align: middle;
 }
 
-.main-content {
-  background: #f3f3f4;
-  padding: calc(20px * var(--sb-scale, 1));
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  transition: padding 0.25s ease;
-  min-width: 0;
+.el-menu--popup {
+  min-width: 0 !important;
 }
 
-.sidebar::-webkit-scrollbar {
-  width: calc(6px * max(var(--sb-scale), 1));
+.main-content {
+  background: #f3f3f4;
+  padding: 0 !important;
+  flex: 1;
+  overflow: hidden !important;
+  min-width: 0;
+  transition: all 0.25s ease;
+}
+
+.main-content .el-main {
+  padding: 0 !important;
+}
+
+.content-inner {
+  width: 100%;
+  height: 100%;
+  padding: var(--sb-content-padding);
+  overflow-y: auto;
+  overflow-x: auto;
+  box-sizing: border-box;
+  transition: padding 0.25s ease;
+}
+
+.sidebar::-webkit-scrollbar,
+.content-inner::-webkit-scrollbar {
+  width: var(--sb-scroll-width);
+  height: var(--sb-scroll-width);
 }
 
 .sidebar::-webkit-scrollbar-track {
   background: #2f4050;
 }
 
+.content-inner::-webkit-scrollbar-track {
+  background: #e8e8e8;
+  border-radius: 3px;
+}
+
 .sidebar::-webkit-scrollbar-thumb {
   background: #51667a;
   border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.content-inner::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 3px;
+  transition: background 0.2s;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: #6b7d8e;
+}
+
+.content-inner::-webkit-scrollbar-thumb:hover {
+  background: #a0a4ac;
+}
+
+.sidebar::-webkit-scrollbar-corner,
+.content-inner::-webkit-scrollbar-corner {
+  background: transparent;
 }
 </style>
