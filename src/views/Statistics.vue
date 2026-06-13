@@ -19,7 +19,7 @@
           <i class="el-icon-data-line"></i>
         </div>
         <div class="stat-info">
-          <div class="stat-value">{{ stats.runStats?.total_runs || 0 }}</div>
+          <div class="stat-value">{{ stats.runStats && stats.runStats.total_runs || 0 }}</div>
           <div class="stat-label">运行次数</div>
         </div>
       </el-card>
@@ -28,7 +28,7 @@
           <i class="el-icon-clock"></i>
         </div>
         <div class="stat-info">
-          <div class="stat-value">{{ formatDuration(stats.runStats?.avg_duration || 0) }}</div>
+          <div class="stat-value">{{ formatDuration(stats.runStats && stats.runStats.avg_duration || 0) }}</div>
           <div class="stat-label">平均时长</div>
         </div>
       </el-card>
@@ -37,7 +37,7 @@
           <i class="el-icon-sort-asc"></i>
         </div>
         <div class="stat-info">
-          <div class="stat-value">{{ (stats.runStats?.total_weight || 0).toFixed(0) }}kg</div>
+          <div class="stat-value">{{ ((stats.runStats && stats.runStats.total_weight) || 0).toFixed(0) }}kg</div>
           <div class="stat-label">总载重</div>
         </div>
       </el-card>
@@ -150,15 +150,16 @@ export default {
       return this.alarmStats.reduce((sum, item) => sum + item.count, 0);
     },
     pieData() {
-      const total = this.stats.maintenanceStats?.reduce((sum, item) => sum + item.count, 0) || 0;
+      const maintenanceStats = this.stats.maintenanceStats || [];
+      const total = maintenanceStats.reduce((sum, item) => sum + item.count, 0) || 0;
       if (total === 0) return [];
       
       let offset = 0;
       const colors = ['#f56c6c', '#e6a23c', '#67c23a'];
       
-      return this.stats.maintenanceStats?.map((item, index) => {
+      return maintenanceStats.map((item, index) => {
         const percentage = (item.count / total) * 100;
-        const dashArray = `${percentage * 2.51} 251`;
+        const dashArray = percentage * 2.51 + ' 251';
         const result = {
           color: colors[index] || '#909399',
           dashArray,
@@ -166,15 +167,16 @@ export default {
         };
         offset += percentage * 2.51;
         return result;
-      }) || [];
+      });
     },
     legendData() {
       const statusMap = { 0: '待处理', 1: '进行中', 2: '已完成' };
-      return this.stats.maintenanceStats?.map(item => ({
+      const maintenanceStats = this.stats.maintenanceStats || [];
+      return maintenanceStats.map(item => ({
         status: item.status,
         label: statusMap[item.status] || '未知',
         count: item.count
-      })) || [];
+      }));
     }
   },
   mounted() {

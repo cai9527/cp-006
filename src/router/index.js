@@ -1,5 +1,11 @@
 import Vue from 'vue';
 import Router from 'vue-router';
+import Login from '@/views/Login.vue';
+import Monitor from '@/views/Monitor.vue';
+import Statistics from '@/views/Statistics.vue';
+import Maintenance from '@/views/Maintenance.vue';
+import Users from '@/views/Users.vue';
+import Alarm from '@/views/Alarm.vue';
 
 Vue.use(Router);
 
@@ -12,32 +18,32 @@ export default new Router({
     {
       path: '/login',
       name: 'Login',
-      component: () => import('@/views/Login.vue')
+      component: Login
     },
     {
       path: '/monitor',
       name: 'Monitor',
-      component: () => import('@/views/Monitor.vue')
+      component: Monitor
     },
     {
       path: '/statistics',
       name: 'Statistics',
-      component: () => import('@/views/Statistics.vue')
+      component: Statistics
     },
     {
       path: '/maintenance',
       name: 'Maintenance',
-      component: () => import('@/views/Maintenance.vue')
+      component: Maintenance
     },
     {
       path: '/users',
       name: 'Users',
-      component: () => import('@/views/Users.vue')
+      component: Users
     },
     {
       path: '/alarm',
       name: 'Alarm',
-      component: () => import('@/views/Alarm.vue')
+      component: Alarm
     }
   ]
 });
