@@ -39,11 +39,11 @@ function requireWritePermission(req, res, next) {
 }
 
 let lifts = [
-  { id: 1, name: '1号升降机', code: 'LIFT-001', location: 'A栋1单元', status: 1, max_weight: 2000, current_weight: 850, current_floor: 12, total_floor: 20, speed: 1.5, last_maintenance: '2024-01-15', next_maintenance: '2024-02-15', created_at: '2024-01-01 08:00:00', updated_at: '2024-01-15 10:00:00' },
-  { id: 2, name: '2号升降机', code: 'LIFT-002', location: 'A栋2单元', status: 0, max_weight: 2000, current_weight: 0, current_floor: 1, total_floor: 20, speed: 0, last_maintenance: '2024-01-10', next_maintenance: '2024-02-10', created_at: '2024-01-01 08:00:00', updated_at: '2024-01-10 09:00:00' },
-  { id: 3, name: '3号升降机', code: 'LIFT-003', location: 'B栋1单元', status: 1, max_weight: 1500, current_weight: 1200, current_floor: 8, total_floor: 15, speed: 1.2, last_maintenance: '2024-01-12', next_maintenance: '2024-02-12', created_at: '2024-01-02 08:00:00', updated_at: '2024-01-12 11:00:00' },
-  { id: 4, name: '4号升降机', code: 'LIFT-004', location: 'B栋2单元', status: 2, max_weight: 1500, current_weight: 0, current_floor: 5, total_floor: 15, speed: 0, last_maintenance: '2024-01-05', next_maintenance: '2024-02-05', created_at: '2024-01-02 08:00:00', updated_at: '2024-01-18 14:00:00' },
-  { id: 5, name: '5号升降机', code: 'LIFT-005', location: 'C栋1单元', status: 3, max_weight: 3000, current_weight: 0, current_floor: 1, total_floor: 25, speed: 0, last_maintenance: '2024-01-18', next_maintenance: '2024-02-18', created_at: '2024-01-03 08:00:00', updated_at: '2024-01-18 09:00:00' }
+  { id: 1, name: '1号升降机', model: 'SC200/200', code: 'LIFT-001', type: 1, location: 'A栋1单元', status: 1, max_weight: 2000, current_weight: 850, current_floor: 12, total_floor: 20, speed: 1.5, last_maintenance: '2024-01-15', next_maintenance: '2024-02-15', description: '施工升降机，双笼', created_at: '2024-01-01 08:00:00', updated_at: '2024-01-15 10:00:00' },
+  { id: 2, name: '2号升降机', model: 'SC200/200', code: 'LIFT-002', type: 1, location: 'A栋2单元', status: 0, max_weight: 2000, current_weight: 0, current_floor: 1, total_floor: 20, speed: 0, last_maintenance: '2024-01-10', next_maintenance: '2024-02-10', description: '施工升降机，双笼', created_at: '2024-01-01 08:00:00', updated_at: '2024-01-10 09:00:00' },
+  { id: 3, name: '3号电梯', model: 'TKJ1000', code: 'LIFT-003', type: 2, location: 'B栋1单元', status: 1, max_weight: 1000, current_weight: 600, current_floor: 8, total_floor: 15, speed: 1.6, last_maintenance: '2024-01-12', next_maintenance: '2024-02-12', description: '乘客电梯，1吨载重', created_at: '2024-01-02 08:00:00', updated_at: '2024-01-12 11:00:00' },
+  { id: 4, name: '4号货梯', model: 'THJ2000', code: 'LIFT-004', type: 3, location: 'B栋2单元', status: 2, max_weight: 2000, current_weight: 0, current_floor: 5, total_floor: 15, speed: 0.5, last_maintenance: '2024-01-05', next_maintenance: '2024-02-05', description: '载货电梯，2吨载重', created_at: '2024-01-02 08:00:00', updated_at: '2024-01-18 14:00:00' },
+  { id: 5, name: '5号升降机', model: 'SC100', code: 'LIFT-005', type: 1, location: 'C栋1单元', status: 3, max_weight: 1000, current_weight: 0, current_floor: 1, total_floor: 25, speed: 0, last_maintenance: '2024-01-18', next_maintenance: '2024-02-18', description: '施工升降机，单笼', created_at: '2024-01-03 08:00:00', updated_at: '2024-01-18 09:00:00' }
 ];
 
 let runRecords = [

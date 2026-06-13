@@ -72,6 +72,10 @@
               <i class="el-icon-video-camera"></i>
               <span>实时监控</span>
             </el-menu-item>
+            <el-menu-item index="/devices">
+              <i class="el-icon-s-tools"></i>
+              <span>设备管理</span>
+            </el-menu-item>
             <el-menu-item index="/statistics">
               <i class="el-icon-bar-chart"></i>
               <span>统计分析</span>

@@ -6,6 +6,8 @@ import Statistics from '@/views/Statistics.vue';
 import Maintenance from '@/views/Maintenance.vue';
 import Users from '@/views/Users.vue';
 import Alarm from '@/views/Alarm.vue';
+import DeviceList from '@/views/DeviceList.vue';
+import DeviceAdd from '@/views/DeviceAdd.vue';
 import { isLoggedIn, canAccessRoute } from '@/utils/permissions';
 
 Vue.use(Router);
@@ -50,6 +52,18 @@ const router = new Router({
       path: '/alarm',
       name: 'Alarm',
       component: Alarm,
+      meta: { requiresAuth: true, adminOnly: false }
+    },
+    {
+      path: '/devices',
+      name: 'DeviceList',
+      component: DeviceList,
+      meta: { requiresAuth: true, adminOnly: false }
+    },
+    {
+      path: '/devices/add',
+      name: 'DeviceAdd',
+      component: DeviceAdd,
       meta: { requiresAuth: true, adminOnly: false }
     }
   ]
