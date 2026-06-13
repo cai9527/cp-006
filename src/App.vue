@@ -76,6 +76,10 @@
               <i class="el-icon-s-tools"></i>
               <span>设备管理</span>
             </el-menu-item>
+            <el-menu-item index="/drivers/add">
+              <i class="el-icon-s-custom"></i>
+              <span>驾驶员管理</span>
+            </el-menu-item>
             <el-menu-item index="/statistics">
               <i class="el-icon-bar-chart"></i>
               <span>统计分析</span>

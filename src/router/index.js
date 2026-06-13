@@ -8,6 +8,7 @@ import Users from '@/views/Users.vue';
 import Alarm from '@/views/Alarm.vue';
 import DeviceList from '@/views/DeviceList.vue';
 import DeviceAdd from '@/views/DeviceAdd.vue';
+import DriverAdd from '@/views/DriverAdd.vue';
 import { isLoggedIn, canAccessRoute } from '@/utils/permissions';
 
 Vue.use(Router);
@@ -64,6 +65,12 @@ const router = new Router({
       path: '/devices/add',
       name: 'DeviceAdd',
       component: DeviceAdd,
+      meta: { requiresAuth: true, adminOnly: false }
+    },
+    {
+      path: '/drivers/add',
+      name: 'DriverAdd',
+      component: DriverAdd,
       meta: { requiresAuth: true, adminOnly: false }
     }
   ]
