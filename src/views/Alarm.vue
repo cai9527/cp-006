@@ -15,7 +15,7 @@
           <el-option label="已处理" :value="1"></el-option>
         </el-select>
         <el-button type="primary" @click="loadAlarms">筛选</el-button>
-        <el-button type="success" @click="handleAll">全部处理</el-button>
+        <el-button type="success" @click="handleAll" :disabled="!$canWrite">全部处理</el-button>
       </div>
     </div>
     
@@ -61,6 +61,7 @@
             size="small" 
             type="primary" 
             @click="handleAlarm(alarm)"
+            :disabled="!$canWrite"
           >
             处理
           </el-button>

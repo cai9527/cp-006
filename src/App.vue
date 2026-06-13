@@ -9,13 +9,17 @@
           <span class="logo-text">工地升降机管理系统</span>
         </div>
         <div class="header-right">
+          <el-tag :type="roleTagType" size="small" effect="dark" class="role-tag">{{ roleText }}</el-tag>
           <el-dropdown>
             <span class="user-info">
               <i class="el-icon-user"></i>
               <span class="user-name">{{ currentUser.name }}</span>
+              <i class="el-icon-arrow-down el-icon--right"></i>
             </span>
             <el-dropdown-menu slot="dropdown">
-              <el-dropdown-item @click.native="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item disabled>用户名：{{ currentUser.username }}</el-dropdown-item>
+              <el-dropdown-item disabled>角色：{{ roleText }}</el-dropdown-item>
+              <el-dropdown-item divided @click.native="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </el-dropdown>
         </div>
@@ -35,14 +39,20 @@
               <i class="el-icon-wrench"></i>
               <span>维护管理</span>
             </el-menu-item>
-            <el-menu-item index="/users">
-              <i class="el-icon-user"></i>
-              <span>用户管理</span>
-            </el-menu-item>
             <el-menu-item index="/alarm">
               <i class="el-icon-bell"></i>
               <span>报警预警</span>
             </el-menu-item>
+            <el-submenu index="system" v-if="$isAdmin">
+              <template slot="title">
+                <i class="el-icon-setting"></i>
+                <span>系统管理</span>
+              </template>
+              <el-menu-item index="/users">
+                <i class="el-icon-user"></i>
+                <span>用户管理</span>
+              </el-menu-item>
+            </el-submenu>
           </el-menu>
         </el-aside>
         <el-main class="main-content">
@@ -54,24 +64,50 @@
 </template>
 
 <script>
+import { getUser, getRoleText, isAdmin, logout as clearUser } from './utils/permissions';
+
 export default {
   name: 'App',
   data() {
     return {
       currentUser: {
-        name: '管理员',
-        role: 'admin'
+        id: null,
+        username: '',
+        name: '',
+        role: null
       }
     };
   },
   computed: {
     isLoginPage() {
       return this.$route.path === '/login';
+    },
+    roleText() {
+      return getRoleText(this.currentUser.role);
+    },
+    roleTagType() {
+      if (isAdmin()) return 'danger';
+      return 'success';
     }
   },
+  watch: {
+    $route() {
+      this.loadUser();
+    }
+  },
+  created() {
+    this.loadUser();
+  },
   methods: {
+    loadUser() {
+      const user = getUser();
+      if (user) {
+        this.currentUser = user;
+      }
+    },
     logout() {
-      sessionStorage.removeItem('user');
+      clearUser();
+      this.currentUser = { id: null, username: '', name: '', role: null };
       this.$router.push('/login');
     }
   }
@@ -132,6 +168,10 @@ body {
 .header-right {
   display: flex;
   align-items: center;
+}
+
+.role-tag {
+  margin-right: 16px;
 }
 
 .user-info {
@@ -197,6 +237,39 @@ body {
 
 .menu .el-menu-item.is-active:hover {
   background-color: #179d82 !important;
+}
+
+.menu .el-submenu__title {
+  background-color: #2f4050 !important;
+  color: #a7b1c2 !important;
+  border-bottom: 1px solid #293846;
+}
+
+.menu .el-submenu__title:hover {
+  background-color: #1f2d3d !important;
+  color: #ffffff !important;
+}
+
+.menu .el-submenu .el-menu {
+  background-color: #293846 !important;
+}
+
+.menu .el-submenu .el-menu-item {
+  background-color: #293846 !important;
+  color: #a7b1c2;
+  border-bottom: 1px solid #243241;
+  min-width: 170px !important;
+  padding-left: 50px !important;
+}
+
+.menu .el-submenu .el-menu-item:hover {
+  background-color: #1f2d3d !important;
+  color: #ffffff;
+}
+
+.menu .el-submenu .el-menu-item.is-active {
+  background-color: #1ab394 !important;
+  color: #ffffff;
 }
 
 .main-content {

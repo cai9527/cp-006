@@ -2,7 +2,7 @@
   <div class="maintenance-page">
     <div class="page-header">
       <h2>维护管理</h2>
-      <el-button type="primary" @click="showAddForm = true">
+      <el-button type="primary" @click="showAddForm = true" :disabled="!$canWrite">
         <i class="el-icon-plus"></i> 新增维护记录
       </el-button>
     </div>
@@ -41,10 +41,10 @@
       <el-table-column prop="completed_at" label="完成时间" width="180"></el-table-column>
       <el-table-column label="操作" width="150">
         <template slot-scope="scope">
-          <el-button v-if="scope.row.status !== 2" size="small" @click="editRecord(scope.row)">编辑</el-button>
-          <el-button v-if="scope.row.status === 0" size="small" type="primary" @click="startRecord(scope.row)">开始维护</el-button>
-          <el-button v-if="scope.row.status === 1" size="small" type="success" @click="completeRecord(scope.row)">完成维护</el-button>
-          <el-button v-if="scope.row.status !== 2" size="small" type="danger" @click="deleteRecord(scope.row)">删除</el-button>
+          <el-button v-if="scope.row.status !== 2" size="small" @click="editRecord(scope.row)" :disabled="!$canWrite">编辑</el-button>
+          <el-button v-if="scope.row.status === 0" size="small" type="primary" @click="startRecord(scope.row)" :disabled="!$canWrite">开始维护</el-button>
+          <el-button v-if="scope.row.status === 1" size="small" type="success" @click="completeRecord(scope.row)" :disabled="!$canWrite">完成维护</el-button>
+          <el-button v-if="scope.row.status !== 2" size="small" type="danger" @click="deleteRecord(scope.row)" :disabled="!$canWrite">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -72,7 +72,7 @@
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="showAddForm = false">取消</el-button>
-        <el-button type="primary" @click="saveRecord">保存</el-button>
+        <el-button type="primary" @click="saveRecord" :disabled="!$canWrite">保存</el-button>
       </div>
     </el-dialog>
   </div>

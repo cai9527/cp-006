@@ -5,9 +5,38 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
+const ROLE_ADMIN = 1;
+const ROLE_NORMAL = [2, 3];
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+function requireAuth(req, res, next) {
+  const role = parseInt(req.headers['x-user-role']);
+  if (!role) {
+    return res.status(401).json({ success: false, message: '未登录或身份无效' });
+  }
+  req.userRole = role;
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (req.userRole !== ROLE_ADMIN) {
+    return res.status(403).json({ success: false, message: '权限不足，需要管理员权限' });
+  }
+  next();
+}
+
+function requireWritePermission(req, res, next) {
+  if (!ROLE_NORMAL.includes(req.userRole) && req.userRole !== ROLE_ADMIN) {
+    return res.status(403).json({ success: false, message: '权限不足' });
+  }
+  if (ROLE_NORMAL.includes(req.userRole) && req.method !== 'GET') {
+    return res.status(403).json({ success: false, message: '权限不足，普通用户仅可查看' });
+  }
+  next();
+}
 
 let lifts = [
   { id: 1, name: '1号升降机', code: 'LIFT-001', location: 'A栋1单元', status: 1, max_weight: 2000, current_weight: 850, current_floor: 12, total_floor: 20, speed: 1.5, last_maintenance: '2024-01-15', next_maintenance: '2024-02-15', created_at: '2024-01-01 08:00:00', updated_at: '2024-01-15 10:00:00' },
@@ -59,17 +88,17 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-app.get('/api/lifts', (req, res) => {
+app.get('/api/lifts', requireAuth, requireWritePermission, (req, res) => {
   res.json({ success: true, data: lifts });
 });
 
-app.get('/api/lifts/:id', (req, res) => {
+app.get('/api/lifts/:id', requireAuth, requireWritePermission, (req, res) => {
   const { id } = req.params;
   const lift = lifts.find(l => l.id === parseInt(id));
   res.json({ success: true, data: lift });
 });
 
-app.post('/api/lifts', (req, res) => {
+app.post('/api/lifts', requireAuth, requireWritePermission, (req, res) => {
   const lift = req.body;
   lift.id = lifts.length + 1;
   lift.created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -78,7 +107,7 @@ app.post('/api/lifts', (req, res) => {
   res.json({ success: true, id: lift.id });
 });
 
-app.put('/api/lifts/:id', (req, res) => {
+app.put('/api/lifts/:id', requireAuth, requireWritePermission, (req, res) => {
   const { id } = req.params;
   const index = lifts.findIndex(l => l.id === parseInt(id));
   if (index !== -1) {
@@ -87,13 +116,13 @@ app.put('/api/lifts/:id', (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/lifts/:id', (req, res) => {
+app.delete('/api/lifts/:id', requireAuth, requireWritePermission, (req, res) => {
   const { id } = req.params;
   lifts = lifts.filter(l => l.id !== parseInt(id));
   res.json({ success: true });
 });
 
-app.get('/api/run_records', (req, res) => {
+app.get('/api/run_records', requireAuth, requireWritePermission, (req, res) => {
   const { lift_id, start_date, end_date } = req.query;
   let data = [...runRecords];
   if (lift_id) data = data.filter(r => r.lift_id === parseInt(lift_id));
@@ -103,7 +132,7 @@ app.get('/api/run_records', (req, res) => {
   res.json({ success: true, data });
 });
 
-app.get('/api/maintenance', (req, res) => {
+app.get('/api/maintenance', requireAuth, requireWritePermission, (req, res) => {
   const { lift_id, status } = req.query;
   let data = maintenanceRecords.map(m => ({
     ...m,
@@ -115,7 +144,7 @@ app.get('/api/maintenance', (req, res) => {
   res.json({ success: true, data });
 });
 
-app.post('/api/maintenance', (req, res) => {
+app.post('/api/maintenance', requireAuth, requireWritePermission, (req, res) => {
   const record = req.body;
   record.id = maintenanceRecords.length + 1;
   record.created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -123,7 +152,7 @@ app.post('/api/maintenance', (req, res) => {
   res.json({ success: true, id: record.id });
 });
 
-app.put('/api/maintenance/:id', (req, res) => {
+app.put('/api/maintenance/:id', requireAuth, requireWritePermission, (req, res) => {
   const { id } = req.params;
   const index = maintenanceRecords.findIndex(m => m.id === parseInt(id));
   if (index !== -1) {
@@ -132,7 +161,7 @@ app.put('/api/maintenance/:id', (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/users', (req, res) => {
+app.get('/api/users', requireAuth, requireAdmin, (req, res) => {
   const data = users.map(u => ({
     id: u.id,
     username: u.username,
@@ -145,7 +174,7 @@ app.get('/api/users', (req, res) => {
   res.json({ success: true, data });
 });
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', requireAuth, requireAdmin, (req, res) => {
   const md5 = (str) => {
     const crypto = require('crypto');
     return crypto.createHash('md5').update(str).digest('hex');
@@ -159,7 +188,7 @@ app.post('/api/users', (req, res) => {
   res.json({ success: true, id: user.id });
 });
 
-app.put('/api/users/:id', (req, res) => {
+app.put('/api/users/:id', requireAuth, requireAdmin, (req, res) => {
   const md5 = (str) => {
     const crypto = require('crypto');
     return crypto.createHash('md5').update(str).digest('hex');
@@ -175,13 +204,13 @@ app.put('/api/users/:id', (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/users/:id', (req, res) => {
+app.delete('/api/users/:id', requireAuth, requireAdmin, (req, res) => {
   const { id } = req.params;
   users = users.filter(u => u.id !== parseInt(id));
   res.json({ success: true });
 });
 
-app.get('/api/alarms', (req, res) => {
+app.get('/api/alarms', requireAuth, requireWritePermission, (req, res) => {
   const { lift_id, status, level } = req.query;
   let data = alarms.map(a => ({
     ...a,
@@ -194,7 +223,7 @@ app.get('/api/alarms', (req, res) => {
   res.json({ success: true, data });
 });
 
-app.post('/api/alarms', (req, res) => {
+app.post('/api/alarms', requireAuth, requireWritePermission, (req, res) => {
   const alarm = req.body;
   alarm.id = alarms.length + 1;
   alarm.created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -202,7 +231,7 @@ app.post('/api/alarms', (req, res) => {
   res.json({ success: true, id: alarm.id });
 });
 
-app.put('/api/alarms/:id', (req, res) => {
+app.put('/api/alarms/:id', requireAuth, requireWritePermission, (req, res) => {
   const { id } = req.params;
   const index = alarms.findIndex(a => a.id === parseInt(id));
   if (index !== -1) {
@@ -211,7 +240,7 @@ app.put('/api/alarms/:id', (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/statistics', (req, res) => {
+app.get('/api/statistics', requireAuth, requireWritePermission, (req, res) => {
   const { lift_id } = req.query;
   let filteredRecords = runRecords;
   if (lift_id) filteredRecords = filteredRecords.filter(r => r.lift_id === parseInt(lift_id));
