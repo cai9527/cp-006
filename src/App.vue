@@ -69,36 +69,36 @@
             router
           >
             <el-menu-item index="/monitor">
-              <i class="el-icon-video-camera"></i>
+              <i class="el-icon-video-camera menu-icon"></i>
               <span>实时监控</span>
             </el-menu-item>
             <el-menu-item index="/devices">
-              <i class="el-icon-s-tools"></i>
+              <i class="el-icon-s-tools menu-icon"></i>
               <span>设备管理</span>
             </el-menu-item>
-            <el-menu-item index="/drivers/add">
-              <i class="el-icon-s-custom"></i>
+            <el-menu-item index="/drivers">
+              <i class="el-icon-s-custom menu-icon"></i>
               <span>驾驶员管理</span>
             </el-menu-item>
             <el-menu-item index="/statistics">
-              <i class="el-icon-bar-chart"></i>
+              <i class="el-icon-s-data menu-icon"></i>
               <span>统计分析</span>
             </el-menu-item>
             <el-menu-item index="/maintenance">
-              <i class="el-icon-wrench"></i>
+              <i class="el-icon-s-operation menu-icon"></i>
               <span>维护管理</span>
             </el-menu-item>
             <el-menu-item index="/alarm">
-              <i class="el-icon-bell"></i>
+              <i class="el-icon-bell menu-icon"></i>
               <span>报警预警</span>
             </el-menu-item>
             <el-submenu index="system" v-if="$isAdmin">
               <template slot="title">
-                <i class="el-icon-setting"></i>
+                <i class="el-icon-s-tools menu-icon"></i>
                 <span>系统管理</span>
               </template>
               <el-menu-item index="/users">
-                <i class="el-icon-user"></i>
+                <i class="el-icon-s-user menu-icon"></i>
                 <span>用户管理</span>
               </el-menu-item>
             </el-submenu>
@@ -423,12 +423,22 @@ body {
   transition: background-color 0.2s, color 0.2s;
 }
 
-.menu .el-menu-item i {
+.menu .el-menu-item i,
+.menu .el-submenu__title i {
   font-size: var(--sb-icon) !important;
   margin-right: calc(10px * var(--sb-scale)) !important;
   width: var(--sb-icon) !important;
+  min-width: var(--sb-icon) !important;
+  max-width: var(--sb-icon) !important;
+  height: var(--sb-icon) !important;
+  line-height: var(--sb-icon) !important;
   text-align: center;
   vertical-align: middle;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .menu .el-menu-item:hover {
@@ -454,14 +464,6 @@ body {
   color: #a7b1c2 !important;
   border-bottom: 1px solid #293846;
   transition: background-color 0.2s, color 0.2s;
-}
-
-.menu .el-submenu__title i {
-  font-size: var(--sb-icon) !important;
-  margin-right: calc(10px * var(--sb-scale)) !important;
-  width: var(--sb-icon) !important;
-  text-align: center;
-  vertical-align: middle;
 }
 
 .menu .el-submenu__title:hover {
