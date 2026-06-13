@@ -153,6 +153,72 @@
       </el-table-column>
     </el-table>
 
+    <el-dialog
+      title="驾驶员详情"
+      :visible.sync="detailVisible"
+      width="680px"
+      top="6vh"
+      class="detail-dialog"
+    >
+      <div v-if="currentDriver" class="detail-content">
+        <div class="detail-header">
+          <el-avatar
+            :size="64"
+            :style="{ backgroundColor: getAvatarColor(currentDriver.name) }"
+            class="detail-avatar"
+          >
+            {{ currentDriver.name ? currentDriver.name.charAt(0) : '' }}
+          </el-avatar>
+          <div class="detail-header-info">
+            <h3>{{ currentDriver.name }}</h3>
+            <div class="detail-tags">
+              <el-tag size="small" :type="currentDriver.gender === 1 ? '' : 'danger'">
+                {{ currentDriver.gender === 1 ? '男' : '女' }}
+              </el-tag>
+              <el-tag size="small" :type="getLicenseTagType(currentDriver.license_type)">
+                {{ currentDriver.license_type }}
+              </el-tag>
+              <el-tag
+                size="small"
+                :type="getLicenseStatusType(currentDriver.license_expiry_date)"
+              >
+                {{ getLicenseStatusText(currentDriver.license_expiry_date) }}
+              </el-tag>
+            </div>
+          </div>
+        </div>
+
+        <el-divider content-position="left">基本信息</el-divider>
+        <el-descriptions :column="2" border size="medium">
+          <el-descriptions-item label="姓名">{{ currentDriver.name }}</el-descriptions-item>
+          <el-descriptions-item label="性别">{{ currentDriver.gender === 1 ? '男' : '女' }}</el-descriptions-item>
+          <el-descriptions-item label="出生日期">{{ currentDriver.birthday }}</el-descriptions-item>
+          <el-descriptions-item label="身份证号码">{{ currentDriver.id_card }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ currentDriver.phone }}</el-descriptions-item>
+          <el-descriptions-item label="所属部门">{{ currentDriver.department }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-divider content-position="left">驾驶证信息</el-divider>
+        <el-descriptions :column="2" border size="medium">
+          <el-descriptions-item label="驾驶证类型">{{ currentDriver.license_type }}</el-descriptions-item>
+          <el-descriptions-item label="驾驶证号码">{{ currentDriver.license_no }}</el-descriptions-item>
+          <el-descriptions-item label="初次领证日期">{{ currentDriver.first_license_date }}</el-descriptions-item>
+          <el-descriptions-item label="有效期至">{{ currentDriver.license_expiry_date }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-divider content-position="left">紧急联系信息</el-divider>
+        <el-descriptions :column="2" border size="medium">
+          <el-descriptions-item label="紧急联系人">{{ currentDriver.emergency_contact }}</el-descriptions-item>
+          <el-descriptions-item label="紧急联系电话">{{ currentDriver.emergency_phone }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <span slot="footer">
+        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button type="primary" @click="editFromDetail">编辑</el-button>
+      </span>
+    </el-dialog>
+
     <el-pagination
       class="pagination"
       background
@@ -176,6 +242,8 @@ export default {
     return {
       loading: false,
       drivers: [],
+      detailVisible: false,
+      currentDriver: null,
       filterForm: {
         name: '',
         gender: null,
@@ -248,13 +316,31 @@ export default {
         if (res.data && res.data.success) {
           this.drivers = res.data.data || [];
         } else {
-          this.drivers = this.getMockData();
+          this.drivers = this.getMergedData();
         }
       }).catch(() => {
-        this.drivers = this.getMockData();
+        this.drivers = this.getMergedData();
       }).finally(() => {
         this.loading = false;
       });
+    },
+    getMergedData() {
+      const mockData = this.getMockData();
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('driver_list') || '[]');
+        if (stored.length > 0) {
+          const mockMap = {};
+          mockData.forEach(d => { mockMap[d.id] = d; });
+          stored.forEach(s => { mockMap[s.id] = s; });
+          return Object.values(mockMap);
+        }
+      } catch (e) {}
+      return mockData;
+    },
+    saveToStorage(drivers) {
+      try {
+        sessionStorage.setItem('driver_list', JSON.stringify(drivers));
+      } catch (e) {}
     },
     getMockData() {
       const names = ['张伟', '王芳', '李强', '刘洋', '陈静', '杨帆', '赵磊', '黄丽', '周杰', '吴敏',
@@ -354,9 +440,15 @@ export default {
       this.$router.push('/drivers/add');
     },
     viewDriver(driver) {
-      this.$message.info(`查看驾驶员：${driver.name}`);
+      this.currentDriver = driver;
+      this.detailVisible = true;
+    },
+    editFromDetail() {
+      this.detailVisible = false;
+      this.editDriver(this.currentDriver);
     },
     editDriver(driver) {
+      sessionStorage.setItem('driver_edit', JSON.stringify(driver));
       this.$router.push({ path: '/drivers/add', query: { id: driver.id } });
     },
     deleteDriver(driver) {
@@ -371,14 +463,17 @@ export default {
             this.$message.success('删除成功');
             this.loadDrivers();
           } else {
-            this.drivers = this.drivers.filter(d => d.id !== driver.id);
-            this.$message.success('删除成功');
+            this.removeDriverFromStorage(driver.id);
           }
         }).catch(() => {
-          this.drivers = this.drivers.filter(d => d.id !== driver.id);
-          this.$message.success('删除成功');
+          this.removeDriverFromStorage(driver.id);
         });
       }).catch(() => {});
+    },
+    removeDriverFromStorage(id) {
+      this.drivers = this.drivers.filter(d => d.id !== id);
+      this.saveToStorage(this.drivers);
+      this.$message.success('删除成功');
     },
     handlePageChange(page) {
       this.currentPage = page;
@@ -456,6 +551,39 @@ export default {
 .pagination {
   margin-top: 20px;
   text-align: right;
+}
+
+.detail-content {
+  padding: 0 10px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+
+.detail-avatar {
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.detail-header-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  color: #303133;
+}
+
+.detail-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.detail-content .el-divider {
+  margin: 20px 0 16px;
 }
 
 @media screen and (max-width: 768px) {

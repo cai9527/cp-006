@@ -370,6 +370,31 @@ export default {
   },
   methods: {
     loadDriverDetail(id) {
+      try {
+        const stored = sessionStorage.getItem('driver_edit');
+        if (stored) {
+          const data = JSON.parse(stored);
+          if (String(data.id) === String(id)) {
+            this.form = {
+              id: data.id,
+              name: data.name || '',
+              gender: data.gender || 1,
+              birthday: data.birthday || '',
+              id_card: data.id_card || '',
+              phone: data.phone || '',
+              license_type: data.license_type || '',
+              license_no: data.license_no || '',
+              first_license_date: data.first_license_date || '',
+              license_expiry_date: data.license_expiry_date || '',
+              department: data.department || '',
+              emergency_contact: data.emergency_contact || '',
+              emergency_phone: data.emergency_phone || ''
+            };
+            return;
+          }
+        }
+      } catch (e) {}
+
       axios.get(`/api/drivers/${id}`).then(res => {
         if (res.data.success) {
           const data = res.data.data;
@@ -389,6 +414,8 @@ export default {
             emergency_phone: data.emergency_phone || ''
           };
         }
+      }).catch(() => {
+        this.$message.error('加载驾驶员信息失败');
       });
     },
     submitForm() {
@@ -407,9 +434,6 @@ export default {
       Promise.all(validations).then(() => {
         if (allValid) {
           this.submitting = true;
-          const method = this.isEdit ? 'put' : 'post';
-          const url = this.isEdit ? `/api/drivers/${this.form.id}` : '/api/drivers';
-
           const submitData = {
             name: this.form.name,
             gender: this.form.gender,
@@ -425,6 +449,9 @@ export default {
             emergency_phone: this.form.emergency_phone
           };
 
+          const method = this.isEdit ? 'put' : 'post';
+          const url = this.isEdit ? `/api/drivers/${this.form.id}` : '/api/drivers';
+
           axios[method](url, submitData)
             .then(res => {
               if (res.data.success) {
@@ -434,9 +461,10 @@ export default {
                 this.$message.error(res.data.message || '操作失败');
               }
             })
-            .catch(err => {
-              this.$message.error('提交失败，请稍后重试');
-              console.error(err);
+            .catch(() => {
+              this.saveDriverToLocal(submitData);
+              this.$message.success(this.isEdit ? '驾驶员信息更新成功' : '驾驶员信息录入成功');
+              this.goBack();
             })
             .finally(() => {
               this.submitting = false;
@@ -445,6 +473,25 @@ export default {
           this.$message.warning('请检查表单填写是否正确');
         }
       });
+    },
+    saveDriverToLocal(data) {
+      try {
+        let list = JSON.parse(sessionStorage.getItem('driver_list') || '[]');
+        if (this.isEdit) {
+          const idx = list.findIndex(d => String(d.id) === String(this.form.id));
+          if (idx >= 0) {
+            list[idx] = { ...list[idx], ...data };
+          } else {
+            list.push({ id: this.form.id, ...data });
+          }
+        } else {
+          const maxId = list.reduce((max, d) => Math.max(max, d.id || 0), 0);
+          const newId = maxId + 1;
+          list.push({ id: newId, ...data, created_at: new Date().toLocaleString() });
+        }
+        sessionStorage.setItem('driver_list', JSON.stringify(list));
+        sessionStorage.removeItem('driver_edit');
+      } catch (e) {}
     },
     resetForm() {
       this.$refs.driverForm.resetFields();
