@@ -1,79 +1,147 @@
 <template>
   <div class="maintenance-page">
-    <div class="page-header">
-      <h2>维护管理</h2>
-      <el-button type="primary" @click="showAddForm = true" :disabled="!$canWrite">
-        <i class="el-icon-plus"></i> 新增维护记录
+    <PageHeader title="维护管理">
+      <el-button type="primary" @click="showAddDialog">
+        <i class="el-icon-plus"></i> 新建维护
       </el-button>
-    </div>
-    
-    <div class="filter-bar">
-      <el-select v-model="filterLift" placeholder="选择升降机">
-        <el-option label="全部" :value="0"></el-option>
-        <el-option v-for="lift in lifts" :key="lift.id" :label="lift.name" :value="lift.id"></el-option>
-      </el-select>
-      <el-select v-model="filterStatus" placeholder="选择状态">
-        <el-option label="全部" :value="-1"></el-option>
-        <el-option label="待处理" :value="0"></el-option>
-        <el-option label="进行中" :value="1"></el-option>
-        <el-option label="已完成" :value="2"></el-option>
-      </el-select>
-      <el-button type="default" @click="loadRecords">筛选</el-button>
-    </div>
-    
-    <el-table :data="records" border>
-      <el-table-column prop="lift_name" label="升降机" width="150"></el-table-column>
-      <el-table-column prop="type" label="维护类型" width="120">
-        <template slot-scope="scope">
-          {{ getTypeName(scope.row.type) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="content" label="维护内容" min-width="200"></el-table-column>
-      <el-table-column prop="worker" label="维护人员" width="120"></el-table-column>
-      <el-table-column prop="status" label="状态" width="100">
-        <template slot-scope="scope">
-          <span :class="getStatusClass(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
-          </span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
-      <el-table-column prop="completed_at" label="完成时间" width="180"></el-table-column>
-      <el-table-column label="操作" width="150">
-        <template slot-scope="scope">
-          <el-button v-if="scope.row.status !== 2" size="small" @click="editRecord(scope.row)" :disabled="!$canWrite">编辑</el-button>
-          <el-button v-if="scope.row.status === 0" size="small" type="primary" @click="startRecord(scope.row)" :disabled="!$canWrite">开始维护</el-button>
-          <el-button v-if="scope.row.status === 1" size="small" type="success" @click="completeRecord(scope.row)" :disabled="!$canWrite">完成维护</el-button>
-          <el-button v-if="scope.row.status !== 2" size="small" type="danger" @click="deleteRecord(scope.row)" :disabled="!$canWrite">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    
-    <el-dialog title="维护记录" :visible.sync="showAddForm" width="500px">
-      <el-form :model="form" label-width="100px">
-        <el-form-item label="升降机">
-          <el-select v-model="form.lift_id" required>
-            <el-option v-for="lift in lifts" :key="lift.id" :label="lift.name" :value="lift.id"></el-option>
+    </PageHeader>
+
+    <FilterCard>
+      <el-form inline label-width="100px">
+        <el-form-item label="维护状态">
+          <el-select v-model="filterStatus" placeholder="全部" clearable>
+            <el-option
+              v-for="opt in $status.getMaintenanceStatusOptions()"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            ></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="维护类型">
-          <el-select v-model="form.type" required>
-            <el-option label="日常保养" :value="1"></el-option>
-            <el-option label="定期检修" :value="2"></el-option>
-            <el-option label="故障维修" :value="3"></el-option>
+          <el-select v-model="filterType" placeholder="全部" clearable>
+            <el-option
+              v-for="opt in $status.getMaintenanceTypeOptions()"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            ></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="维护内容">
-          <el-textarea v-model="form.content" rows="4"></el-textarea>
-        </el-form-item>
-        <el-form-item label="维护人员">
-          <el-input v-model="form.worker"></el-input>
+        <el-form-item>
+          <el-button type="primary" @click="loadRecords">筛选</el-button>
         </el-form-item>
       </el-form>
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="showAddForm = false">取消</el-button>
-        <el-button type="primary" @click="saveRecord" :disabled="!$canWrite">保存</el-button>
-      </div>
+    </FilterCard>
+
+    <el-table :data="filteredRecords" border stripe>
+      <el-table-column prop="code" label="维护单号" width="160"></el-table-column>
+      <el-table-column prop="lift_name" label="设备名称" min-width="120"></el-table-column>
+      <el-table-column prop="type" label="维护类型" width="120">
+        <template slot-scope="scope">
+          <span class="badge type-badge">
+            <i class="el-icon-setting"></i>
+            <span :style="{ color: $status.getMaintenanceStatusColor(scope.row.status) }">
+              {{ $status.getMaintenanceTypeText(scope.row.type) }}
+            </span>
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="description" label="维护内容" min-width="180"></el-table-column>
+      <el-table-column prop="operator" label="维护人员" width="120"></el-table-column>
+      <el-table-column prop="scheduled_date" label="计划日期" width="140"></el-table-column>
+      <el-table-column prop="status" label="状态" width="100">
+        <template slot-scope="scope">
+          <StatusBadge type="maintenance" :value="scope.row.status" />
+        </template>
+      </el-table-column>
+      <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
+      <el-table-column label="操作" width="260" fixed="right">
+        <template slot-scope="scope">
+          <el-button
+            size="small"
+            type="primary"
+            @click="startMaintenance(scope.row)"
+            :disabled="scope.row.status !== 0"
+          >开始</el-button>
+          <el-button
+            size="small"
+            type="success"
+            @click="completeMaintenance(scope.row)"
+            :disabled="scope.row.status !== 1"
+          >完成</el-button>
+          <el-button size="small" @click="editRecord(scope.row)">编辑</el-button>
+          <el-button size="small" type="danger" @click="deleteRecord(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <DataPagination
+      :total="filteredRecords.length"
+      :page-size="pageSize"
+      :current-page="currentPage"
+      @current-change="handlePageChange"
+      @size-change="handleSizeChange"
+    />
+
+    <el-dialog
+      :title="editingRecord.id ? '编辑维护' : '新建维护'"
+      :visible.sync="dialogVisible"
+      width="600px"
+    >
+      <el-form :model="editingRecord" :rules="formRules" ref="mForm" label-width="100px">
+        <el-form-item label="设备" prop="lift_id">
+          <el-select v-model="editingRecord.lift_id" placeholder="请选择设备" filterable>
+            <el-option
+              v-for="lift in lifts"
+              :key="lift.id"
+              :label="`${lift.name} (${lift.code})`"
+              :value="lift.id"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="维护类型" prop="type">
+          <el-select v-model="editingRecord.type" placeholder="请选择类型">
+            <el-option
+              v-for="opt in $status.getMaintenanceTypeOptions()"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="维护内容" prop="description">
+          <el-input v-model="editingRecord.description" type="textarea" :rows="3" placeholder="请输入维护内容"></el-input>
+        </el-form-item>
+        <el-form-item label="维护人员" prop="operator">
+          <el-input v-model="editingRecord.operator" placeholder="请输入维护人员姓名"></el-input>
+        </el-form-item>
+        <el-form-item label="计划日期" prop="scheduled_date">
+          <el-date-picker
+            v-model="editingRecord.scheduled_date"
+            type="date"
+            placeholder="选择日期"
+            value-format="yyyy-MM-dd"
+            style="width: 100%;"
+          ></el-date-picker>
+        </el-form-item>
+        <el-form-item label="状态" v-if="editingRecord.id" prop="status">
+          <el-select v-model="editingRecord.status" placeholder="请选择状态">
+            <el-option
+              v-for="opt in $status.getMaintenanceStatusOptions()"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <FormActions
+        slot="footer"
+        :submitting="submitting"
+        @submit="saveRecord"
+        @cancel="dialogVisible = false"
+      />
     </el-dialog>
   </div>
 </template>
@@ -85,110 +153,129 @@ export default {
   name: 'Maintenance',
   data() {
     return {
-      lifts: [],
       records: [],
-      filterLift: 0,
-      filterStatus: -1,
-      showAddForm: false,
-      form: {
+      lifts: [],
+      filterStatus: null,
+      filterType: null,
+      pageSize: 10,
+      currentPage: 1,
+      dialogVisible: false,
+      submitting: false,
+      editingRecord: {
         id: null,
-        lift_id: '',
+        lift_id: null,
         type: 1,
-        content: '',
-        worker: '',
+        description: '',
+        operator: '',
+        scheduled_date: '',
         status: 0
+      },
+      formRules: {
+        lift_id: [{ required: true, message: '请选择设备', trigger: 'change' }],
+        type: [{ required: true, message: '请选择维护类型', trigger: 'change' }],
+        description: [{ required: true, message: '请输入维护内容', trigger: 'blur' }],
+        operator: [{ required: true, message: '请输入维护人员', trigger: 'blur' }],
+        scheduled_date: [{ required: true, message: '请选择计划日期', trigger: 'change' }]
       }
     };
   },
+  computed: {
+    filteredRecords() {
+      return this.records.filter(r => {
+        if (this.filterStatus !== null && this.filterStatus !== undefined && r.status !== this.filterStatus) return false;
+        if (this.filterType && r.type !== this.filterType) return false;
+        return true;
+      });
+    }
+  },
   mounted() {
-    this.loadLifts();
     this.loadRecords();
+    this.loadLifts();
   },
   methods: {
+    loadRecords() {
+      axios.get('/api/maintenance_records').then(res => {
+        if (res.data.success) {
+          this.records = res.data.data || [];
+        }
+      });
+    },
     loadLifts() {
       axios.get('/api/lifts').then(res => {
         if (res.data.success) {
-          this.lifts = res.data.data;
+          this.lifts = res.data.data || [];
         }
       });
     },
-    loadRecords() {
-      const params = {};
-      if (this.filterLift > 0) params.lift_id = this.filterLift;
-      if (this.filterStatus >= 0) params.status = this.filterStatus;
-      
-      axios.get('/api/maintenance', { params }).then(res => {
-        if (res.data.success) {
-          this.records = res.data.data;
-        }
-      });
-    },
-    getTypeName(type) {
-      const types = ['', '日常保养', '定期检修', '故障维修'];
-      return types[type] || '未知';
-    },
-    getStatusClass(status) {
-      const classes = ['status-pending', 'status-processing', 'status-completed'];
-      return classes[status] || '';
-    },
-    getStatusText(status) {
-      const texts = ['待处理', '进行中', '已完成'];
-      return texts[status] || '未知';
+    showAddDialog() {
+      this.editingRecord = {
+        id: null,
+        lift_id: null,
+        type: 1,
+        description: '',
+        operator: '',
+        scheduled_date: '',
+        status: 0
+      };
+      this.dialogVisible = true;
     },
     editRecord(record) {
-      this.form = { ...record };
-      this.showAddForm = true;
+      this.editingRecord = { ...record };
+      this.dialogVisible = true;
     },
     saveRecord() {
-      if (!this.form.lift_id) {
-        this.$message.error('请选择升降机');
-        return;
-      }
-      
-      const method = this.form.id ? 'put' : 'post';
-      const url = this.form.id ? `/api/maintenance/${this.form.id}` : '/api/maintenance';
-      
-      axios[method](url, this.form).then(res => {
+      this.$refs.mForm.validate(valid => {
+        if (!valid) return;
+        this.submitting = true;
+        const request = this.editingRecord.id
+          ? axios.put(`/api/maintenance_records/${this.editingRecord.id}`, this.editingRecord)
+          : axios.post('/api/maintenance_records', this.editingRecord);
+        request.then(res => {
+          if (res.data.success) {
+            this.$message.success(this.editingRecord.id ? '修改成功' : '创建成功');
+            this.dialogVisible = false;
+            this.loadRecords();
+          }
+        }).finally(() => {
+          this.submitting = false;
+        });
+      });
+    },
+    startMaintenance(record) {
+      axios.put(`/api/maintenance_records/${record.id}`, { status: 1 }).then(res => {
         if (res.data.success) {
-          this.$message.success('保存成功');
-          this.showAddForm = false;
-          this.form = { id: null, lift_id: '', type: 1, content: '', worker: '', status: 0 };
+          this.$message.success('维护已开始');
           this.loadRecords();
         }
       });
     },
-    startRecord(record) {
-      axios.put(`/api/maintenance/${record.id}`, { ...record, status: 1 }).then(res => {
+    completeMaintenance(record) {
+      axios.put(`/api/maintenance_records/${record.id}`, { status: 2 }).then(res => {
         if (res.data.success) {
-          this.$message.success('已开始维护');
-          this.loadRecords();
-        }
-      });
-    },
-    completeRecord(record) {
-      axios.put(`/api/maintenance/${record.id}`, { 
-        ...record, 
-        status: 2,
-        completed_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-      }).then(res => {
-        if (res.data.success) {
-          this.$message.success('已完成维护');
+          this.$message.success('维护已完成');
           this.loadRecords();
         }
       });
     },
     deleteRecord(record) {
-      this.$confirm('确定要删除这条记录吗?', '提示', {
+      this.$confirm(`确定要删除维护单"${record.code}"吗？`, '提示', {
         confirmButtonText: '确定',
-        cancelButtonText: '取消'
+        cancelButtonText: '取消',
+        type: 'warning'
       }).then(() => {
-        axios.delete(`/api/maintenance/${record.id}`).then(res => {
+        axios.delete(`/api/maintenance_records/${record.id}`).then(res => {
           if (res.data.success) {
             this.$message.success('删除成功');
             this.loadRecords();
           }
         });
-      });
+      }).catch(() => {});
+    },
+    handlePageChange(page) {
+      this.currentPage = page;
+    },
+    handleSizeChange(size) {
+      this.pageSize = size;
     }
   }
 };
@@ -199,45 +286,10 @@ export default {
   padding: 20px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
+.type-badge {
+  display: inline-flex;
   align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #303133;
-}
-
-.filter-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.status-pending {
-  color: #f56c6c;
-  background: #fef0f0;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.status-processing {
-  color: #e6a23c;
-  background: #fdf6ec;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.status-completed {
-  color: #67c23a;
-  background: #e8f5e9;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 13px;
 }
 </style>

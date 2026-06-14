@@ -154,7 +154,7 @@ export default {
       return this.$route.path === '/login';
     },
     roleText() {
-      return getRoleText(this.currentUser.role);
+      return this.$status.getUserRoleText(this.currentUser.role);
     },
     roleTagType() {
       if (isAdmin()) return 'danger';
@@ -276,7 +276,7 @@ export default {
           alarmNotifier.$emit(alarmNotifier.NOTIFY_EVENT, {
             id: alarm.id,
             level: alarm.level === 1 ? 1 : 2,
-            title: alarm.lift_name + ' - ' + this.getAlarmTypeText(alarm.type),
+            title: alarm.lift_name + ' - ' + this.$status.getAlarmTypeText(alarm.type),
             description: alarm.message,
             created_at: alarm.created_at
           });
@@ -285,10 +285,6 @@ export default {
           this.lastAlarmId = Math.max(...newAlarms.map(a => a.id));
         }
       }).catch(() => {});
-    },
-    getAlarmTypeText(type) {
-      var types = ['', '超载报警', '超速报警', '故障报警', '维护提醒'];
-      return types[type] || '未知报警';
     }
   }
 };

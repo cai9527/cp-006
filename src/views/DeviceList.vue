@@ -1,28 +1,23 @@
 <template>
   <div class="device-list-page">
-    <div class="page-header">
-      <h2>设备管理</h2>
+    <PageHeader title="设备管理">
       <el-button type="primary" @click="goToAdd">
         <i class="el-icon-plus"></i> 新增设备
       </el-button>
-    </div>
+    </PageHeader>
 
     <el-table :data="devices" border stripe>
       <el-table-column prop="name" label="设备名称" min-width="120"></el-table-column>
       <el-table-column prop="code" label="设备编号" width="120"></el-table-column>
       <el-table-column prop="type" label="设备类型" width="120">
         <template slot-scope="scope">
-          <span :class="getTypeClass(scope.row.type)">
-            {{ getTypeText(scope.row.type) }}
-          </span>
+          <StatusBadge type="liftType" :value="scope.row.type" />
         </template>
       </el-table-column>
       <el-table-column prop="location" label="安装位置" min-width="150"></el-table-column>
       <el-table-column prop="status" label="设备状态" width="100">
         <template slot-scope="scope">
-          <span :class="getStatusClass(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
-          </span>
+          <StatusBadge type="lift" :value="scope.row.status" />
         </template>
       </el-table-column>
       <el-table-column prop="max_weight" label="最大载重(kg)" width="120"></el-table-column>
@@ -226,15 +221,13 @@
       </div>
     </el-dialog>
 
-    <el-pagination
-      class="pagination"
-      background
-      layout="total, prev, pager, next, jumper"
+    <DataPagination
       :total="total"
       :page-size="pageSize"
       :current-page="currentPage"
+      :show-sizes="false"
       @current-change="handlePageChange"
-    ></el-pagination>
+    />
   </div>
 </template>
 
@@ -287,83 +280,46 @@ export default {
       const totalFloors = this.totalFloors;
       const padding = 20;
       const usableHeight = this.pathHeight - padding * 2;
-
       for (let i = 0; i <= totalFloors; i++) {
         const y = padding + (i / totalFloors) * usableHeight;
-        lines.push({
-          x1: 0,
-          y1: y,
-          x2: this.pathWidth,
-          y2: y
-        });
+        lines.push({ x1: 0, y1: y, x2: this.pathWidth, y2: y });
       }
       return lines;
     },
     trackPointList() {
       const records = this.sortedTrackRecords;
       if (!records.length) return [];
-
       const points = [];
       const totalFloors = this.totalFloors;
       const recordCount = records.length;
       const padding = 20;
       const usableWidth = this.pathWidth - padding * 2;
       const usableHeight = this.pathHeight - padding * 2;
-
       const getY = (floor) => {
         const safeFloor = Math.max(1, Math.min(totalFloors, floor || 1));
         if (totalFloors <= 1) return padding + usableHeight / 2;
         return padding + usableHeight - ((safeFloor - 1) / (totalFloors - 1)) * usableHeight;
       };
-
       records.forEach((record, index) => {
         const x = recordCount > 1
           ? padding + (index / (recordCount - 1)) * usableWidth
           : padding + usableWidth / 2;
-
         const startY = getY(record.start_floor);
         const endY = getY(record.end_floor);
-
-        points.push({
-          x: x,
-          y: startY,
-          status: record.status,
-          floor: record.start_floor || 1,
-          recordIndex: index,
-          isStart: true,
-          time: record.created_at
-        });
-        points.push({
-          x: x,
-          y: endY,
-          status: record.status,
-          floor: record.end_floor || 1,
-          recordIndex: index,
-          isStart: false,
-          time: record.created_at
-        });
+        points.push({ x, y: startY, status: record.status, floor: record.start_floor || 1, recordIndex: index, isStart: true, time: record.created_at });
+        points.push({ x, y: endY, status: record.status, floor: record.end_floor || 1, recordIndex: index, isStart: false, time: record.created_at });
       });
-
       return points;
     },
     pathLines() {
       const points = this.trackPointList;
       if (points.length < 2) return [];
-
       const lines = [];
       for (let i = 0; i < points.length - 1; i++) {
         const p1 = points[i];
         const p2 = points[i + 1];
         const isSameRecord = p1.recordIndex === p2.recordIndex;
-        lines.push({
-          x1: p1.x,
-          y1: p1.y,
-          x2: p2.x,
-          y2: p2.y,
-          isSameRecord: isSameRecord,
-          status: p1.status,
-          recordIndex: p1.recordIndex
-        });
+        lines.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, isSameRecord, status: p1.status, recordIndex: p1.recordIndex });
       }
       return lines;
     }
@@ -372,10 +328,7 @@ export default {
     loadDevices() {
       axios.get('/api/lifts').then(res => {
         if (res.data.success) {
-          this.devices = res.data.data.map(item => ({
-            ...item,
-            type: item.type || 1
-          }));
+          this.devices = res.data.data.map(item => ({ ...item, type: item.type || 1 }));
           this.total = this.devices.length;
         }
       });
@@ -399,22 +352,6 @@ export default {
           }
         });
       }).catch(() => {});
-    },
-    getTypeClass(type) {
-      const classes = ['', 'type-lift', 'type-elevator', 'type-cargo'];
-      return classes[type] || '';
-    },
-    getTypeText(type) {
-      const texts = ['', '施工升降机', '乘客电梯', '货梯'];
-      return texts[type] || '未知';
-    },
-    getStatusClass(status) {
-      const classes = ['status-stop', 'status-running', 'status-error', 'status-maintenance'];
-      return classes[status] || classes[0];
-    },
-    getStatusText(status) {
-      const texts = ['停止', '运行中', '故障', '维护中'];
-      return texts[status] || '未知';
     },
     handlePageChange(page) {
       this.currentPage = page;
@@ -458,17 +395,13 @@ export default {
       return status === 1 ? '#67c23a' : '#f56c6c';
     },
     getPointColor(status, isStart) {
-      if (isStart) {
-        return '#ffffff';
-      }
+      if (isStart) return '#ffffff';
       return status === 1 ? '#67c23a' : '#f56c6c';
     },
     handlePointHover(index) {
       this.hoverPointIndex = index;
       const point = this.trackPointList[index];
-      if (point) {
-        this.activeRecordIndex = point.recordIndex;
-      }
+      if (point) this.activeRecordIndex = point.recordIndex;
     },
     handlePointLeave() {
       this.hoverPointIndex = -1;
@@ -494,79 +427,6 @@ export default {
   padding: 20px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #303133;
-}
-
-.pagination {
-  margin-top: 20px;
-  text-align: right;
-}
-
-.type-lift {
-  color: #409eff;
-  background: #e3f2fd;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.type-elevator {
-  color: #67c23a;
-  background: #e8f5e9;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.type-cargo {
-  color: #e6a23c;
-  background: #fdf6ec;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.status-stop {
-  color: #909399;
-  background: #f5f5f5;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.status-running {
-  color: #67c23a;
-  background: #e8f5e9;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.status-error {
-  color: #f56c6c;
-  background: #fef0f0;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.status-maintenance {
-  color: #e6a23c;
-  background: #fdf6ec;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
 .track-dialog .el-dialog__body {
   padding-top: 10px;
 }
@@ -582,19 +442,10 @@ export default {
   font-size: 14px;
 }
 
-.track-device-info .label {
-  color: #909399;
-}
+.track-device-info .label { color: #909399; }
+.track-device-info .value { color: #303133; font-weight: 500; }
 
-.track-device-info .value {
-  color: #303133;
-  font-weight: 500;
-}
-
-.track-summary {
-  display: flex;
-  gap: 30px;
-}
+.track-summary { display: flex; gap: 30px; }
 
 .track-summary .summary-item {
   text-align: center;
@@ -616,10 +467,7 @@ export default {
   color: #909399;
 }
 
-.track-content {
-  display: flex;
-  gap: 30px;
-}
+.track-content { display: flex; gap: 30px; }
 
 .track-visual {
   flex: 0 0 420px;
@@ -662,9 +510,7 @@ export default {
   transition: all 0.2s ease;
 }
 
-.floor:last-child {
-  border-bottom: none;
-}
+.floor:last-child { border-bottom: none; }
 
 .floor.has-stop {
   background: #ecf5ff;
@@ -700,10 +546,7 @@ export default {
 .timeline-loading,
 .timeline-empty {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -721,9 +564,7 @@ export default {
   color: #c0c4cc;
 }
 
-.path-loading i {
-  animation: rotate 1s linear infinite;
-}
+.path-loading i { animation: rotate 1s linear infinite; }
 
 .timeline-loading,
 .timeline-empty {
@@ -755,9 +596,7 @@ export default {
   pointer-events: none;
 }
 
-.point-label.label-visible {
-  opacity: 1;
-}
+.point-label.label-visible { opacity: 1; }
 
 .line-active {
   stroke-width: 3 !important;
@@ -785,24 +624,10 @@ export default {
   border-radius: 2px;
 }
 
-.legend-line.normal {
-  background: #67c23a;
-}
-
-.legend-line.error {
-  background: #f56c6c;
-}
-
+.legend-line.normal { background: #67c23a; }
+.legend-line.error { background: #f56c6c; }
 .legend-line.idle {
-  background: #dcdfe6;
-  border-top: 1px dashed #dcdfe6;
-  background: repeating-linear-gradient(
-    to right,
-    #dcdfe6,
-    #dcdfe6 4px,
-    transparent 4px,
-    transparent 8px
-  );
+  background: repeating-linear-gradient(to right, #dcdfe6, #dcdfe6 4px, transparent 4px, transparent 8px);
   height: 2px;
 }
 
@@ -878,9 +703,5 @@ export default {
 .timeline-record .record-item i {
   margin-right: 5px;
   color: #909399;
-}
-
-.dialog-footer {
-  text-align: right;
 }
 </style>

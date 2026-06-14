@@ -3,10 +3,16 @@ import App from './App.vue';
 import router from './router';
 import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
+import './styles/common.css';
 import axios from 'axios';
 import permissions, { getUserRole, isAdmin, canWrite, isLoggedIn, canAccessRoute } from './utils/permissions';
+import statusMappers from './utils/statusMappers';
+import formatters from './utils/formatters';
+import validators from './utils/validators';
+import Components from './components/index.js';
 
 Vue.use(ElementUI);
+Vue.use(Components);
 
 axios.interceptors.request.use(config => {
   const role = getUserRole();
@@ -38,6 +44,10 @@ axios.interceptors.response.use(
 
 Vue.prototype.$axios = axios;
 Vue.prototype.$permissions = permissions;
+
+Vue.prototype.$status = statusMappers;
+Vue.prototype.$format = formatters;
+Vue.prototype.$validators = validators;
 
 Vue.mixin({
   computed: {
