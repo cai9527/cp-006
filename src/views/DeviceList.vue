@@ -77,38 +77,89 @@
         <div class="track-visual">
           <div class="building">
             <div class="building-label">楼层</div>
-            <div class="floors">
+            <div class="floors" :style="{ height: pathHeight + 'px' }">
               <div
                 v-for="floor in totalFloors"
                 :key="floor"
                 class="floor"
                 :class="{ 'has-stop': hasStopAtFloor(floor) }"
+                :style="{ height: floorHeight + 'px', lineHeight: floorHeight + 'px' }"
               >
                 <span class="floor-num">{{ totalFloors - floor + 1 }}F</span>
               </div>
             </div>
           </div>
           <div class="path-container">
-            <div class="path-label">移动路径</div>
-            <div class="path-canvas">
-              <svg :viewBox="`0 0 ${pathWidth} ${pathHeight}`" class="path-svg">
-                <polyline
-                  :points="pathPoints"
-                  fill="none"
-                  stroke="#409eff"
+            <div class="path-label">运行轨迹（从左到右：时间顺序）</div>
+            <div class="path-canvas" :style="{ height: pathHeight + 'px' }">
+              <div v-if="trackLoading" class="path-loading">
+                <i class="el-icon-loading"></i>
+                <span>加载中...</span>
+              </div>
+              <div v-else-if="!sortedTrackRecords.length" class="path-empty">
+                <i class="el-icon-document"></i>
+                <span>暂无运行轨迹数据</span>
+              </div>
+              <svg v-else :viewBox="`0 0 ${pathWidth} ${pathHeight}`" class="path-svg">
+                <line
+                  v-for="(line, index) in gridLines"
+                  :key="'grid-' + index"
+                  :x1="line.x1"
+                  :y1="line.y1"
+                  :x2="line.x2"
+                  :y2="line.y2"
+                  stroke="#f0f0f0"
+                  stroke-width="1"
+                />
+                <line
+                  v-for="(line, index) in pathLines"
+                  :key="'line-' + index"
+                  :x1="line.x1"
+                  :y1="line.y1"
+                  :x2="line.x2"
+                  :y2="line.y2"
+                  :stroke="line.isSameRecord ? getLineColor(line.status) : '#dcdfe6'"
                   stroke-width="2"
-                  stroke-dasharray="5,3"
+                  :stroke-dasharray="line.isSameRecord ? '0' : '4,4'"
+                  :class="{ 'line-active': activeRecordIndex === line.recordIndex }"
                 />
-                <circle
-                  v-for="(point, index) in pathPointList"
-                  :key="index"
-                  :cx="point.x"
-                  :cy="point.y"
-                  r="6"
-                  :fill="point.status === 1 ? '#67c23a' : '#f56c6c'"
-                  class="path-point"
-                />
+                <g v-for="(point, index) in trackPointList" :key="'point-' + index">
+                  <circle
+                    :cx="point.x"
+                    :cy="point.y"
+                    :r="hoverPointIndex === index || activeRecordIndex === point.recordIndex ? 8 : 5"
+                    :fill="getPointColor(point.status, point.isStart)"
+                    :stroke="point.status === 1 ? '#67c23a' : '#f56c6c'"
+                    stroke-width="2"
+                    class="track-point"
+                    @mouseenter="handlePointHover(index)"
+                    @mouseleave="handlePointLeave"
+                  />
+                  <text
+                    v-if="point.isStart"
+                    :x="point.x + 10"
+                    :y="point.y - 8"
+                    class="point-label"
+                    :class="{ 'label-visible': hoverPointIndex === index || activeRecordIndex === point.recordIndex }"
+                  >
+                    {{ point.floor }}F
+                  </text>
+                </g>
               </svg>
+            </div>
+            <div class="path-legend">
+              <span class="legend-item">
+                <span class="legend-line normal"></span>
+                <span class="legend-text">正常运行</span>
+              </span>
+              <span class="legend-item">
+                <span class="legend-line error"></span>
+                <span class="legend-text">异常运行</span>
+              </span>
+              <span class="legend-item">
+                <span class="legend-line idle"></span>
+                <span class="legend-text">停靠等待</span>
+              </span>
             </div>
           </div>
         </div>
@@ -116,16 +167,28 @@
         <div class="track-timeline">
           <div class="timeline-title">
             <i class="el-icon-time"></i> 运行时间轴
+            <span class="timeline-count">共 {{ trackRecords.length }} 条记录</span>
           </div>
-          <el-timeline>
+          <div v-if="trackLoading" class="timeline-loading">
+            <i class="el-icon-loading"></i>
+            <span>加载中...</span>
+          </div>
+          <div v-else-if="!trackRecords.length" class="timeline-empty">
+            <i class="el-icon-document"></i>
+            <span>暂无运行记录</span>
+          </div>
+          <el-timeline v-else>
             <el-timeline-item
               v-for="(record, index) in trackRecords"
               :key="record.id"
               :timestamp="record.created_at"
               placement="top"
               :color="record.status === 1 ? '#67c23a' : '#f56c6c'"
+              :class="{ 'timeline-item-active': activeRecordIndex === getSortedIndex(index) }"
+              @mouseenter.native="handleTimelineHover(getSortedIndex(index))"
+              @mouseleave.native="handleTimelineLeave"
             >
-              <el-card shadow="never" class="timeline-card">
+              <el-card shadow="never" class="timeline-card" :class="{ 'card-active': activeRecordIndex === getSortedIndex(index) }">
                 <div class="timeline-record">
                   <div class="record-header">
                     <span class="record-title">第 {{ trackRecords.length - index }} 次运行</span>
@@ -136,19 +199,19 @@
                   <div class="record-body">
                     <div class="record-item">
                       <i class="el-icon-top-right"></i>
-                      <span>起始楼层：{{ record.start_floor }}F</span>
+                      <span>起始楼层：{{ record.start_floor || '-' }}F</span>
                     </div>
                     <div class="record-item">
                       <i class="el-icon-bottom-right"></i>
-                      <span>到达楼层：{{ record.end_floor }}F</span>
+                      <span>到达楼层：{{ record.end_floor || '-' }}F</span>
                     </div>
                     <div class="record-item">
                       <i class="el-icon-truck"></i>
-                      <span>载重：{{ record.weight }} kg</span>
+                      <span>载重：{{ record.weight || 0 }} kg</span>
                     </div>
                     <div class="record-item">
                       <i class="el-icon-timer"></i>
-                      <span>时长：{{ record.duration }} 秒</span>
+                      <span>时长：{{ record.duration || 0 }} 秒</span>
                     </div>
                   </div>
                 </div>
@@ -189,8 +252,11 @@ export default {
       trackDialogVisible: false,
       currentDevice: {},
       trackRecords: [],
-      pathWidth: 300,
-      pathHeight: 400
+      trackLoading: false,
+      pathWidth: 320,
+      pathHeight: 380,
+      activeRecordIndex: -1,
+      hoverPointIndex: -1
     };
   },
   mounted() {
@@ -198,35 +264,108 @@ export default {
   },
   computed: {
     totalFloors() {
-      return this.currentDevice.total_floor || 20;
+      return Math.max(1, this.currentDevice.total_floor || 20);
+    },
+    floorHeight() {
+      return Math.max(12, this.pathHeight / this.totalFloors);
+    },
+    sortedTrackRecords() {
+      return [...this.trackRecords].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     },
     totalDistance() {
-      return this.trackRecords.reduce((sum, r) => sum + Math.abs(r.end_floor - r.start_floor), 0);
+      return this.trackRecords.reduce((sum, r) => {
+        const start = r.start_floor || 0;
+        const end = r.end_floor || 0;
+        return sum + Math.abs(end - start);
+      }, 0);
     },
     totalDuration() {
       return this.trackRecords.reduce((sum, r) => sum + (r.duration || 0), 0);
     },
-    pathPointList() {
-      if (!this.trackRecords.length) return [];
+    gridLines() {
+      const lines = [];
+      const totalFloors = this.totalFloors;
+      const padding = 20;
+      const usableHeight = this.pathHeight - padding * 2;
+
+      for (let i = 0; i <= totalFloors; i++) {
+        const y = padding + (i / totalFloors) * usableHeight;
+        lines.push({
+          x1: 0,
+          y1: y,
+          x2: this.pathWidth,
+          y2: y
+        });
+      }
+      return lines;
+    },
+    trackPointList() {
+      const records = this.sortedTrackRecords;
+      if (!records.length) return [];
+
       const points = [];
       const totalFloors = this.totalFloors;
-      const recordCount = this.trackRecords.length;
-      const stepX = this.pathWidth / (recordCount || 1);
+      const recordCount = records.length;
+      const padding = 20;
+      const usableWidth = this.pathWidth - padding * 2;
+      const usableHeight = this.pathHeight - padding * 2;
 
-      this.trackRecords.forEach((record, index) => {
-        const startY = this.pathHeight - ((record.start_floor - 1) / (totalFloors - 1)) * this.pathHeight;
-        const endY = this.pathHeight - ((record.end_floor - 1) / (totalFloors - 1)) * this.pathHeight;
-        const x1 = index * stepX + stepX * 0.3;
-        const x2 = index * stepX + stepX * 0.7;
+      const getY = (floor) => {
+        const safeFloor = Math.max(1, Math.min(totalFloors, floor || 1));
+        if (totalFloors <= 1) return padding + usableHeight / 2;
+        return padding + usableHeight - ((safeFloor - 1) / (totalFloors - 1)) * usableHeight;
+      };
 
-        points.push({ x: x1, y: startY, status: record.status, floor: record.start_floor });
-        points.push({ x: x2, y: endY, status: record.status, floor: record.end_floor });
+      records.forEach((record, index) => {
+        const x = recordCount > 1
+          ? padding + (index / (recordCount - 1)) * usableWidth
+          : padding + usableWidth / 2;
+
+        const startY = getY(record.start_floor);
+        const endY = getY(record.end_floor);
+
+        points.push({
+          x: x,
+          y: startY,
+          status: record.status,
+          floor: record.start_floor || 1,
+          recordIndex: index,
+          isStart: true,
+          time: record.created_at
+        });
+        points.push({
+          x: x,
+          y: endY,
+          status: record.status,
+          floor: record.end_floor || 1,
+          recordIndex: index,
+          isStart: false,
+          time: record.created_at
+        });
       });
 
       return points;
     },
-    pathPoints() {
-      return this.pathPointList.map(p => `${p.x},${p.y}`).join(' ');
+    pathLines() {
+      const points = this.trackPointList;
+      if (points.length < 2) return [];
+
+      const lines = [];
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const isSameRecord = p1.recordIndex === p2.recordIndex;
+        lines.push({
+          x1: p1.x,
+          y1: p1.y,
+          x2: p2.x,
+          y2: p2.y,
+          isSameRecord: isSameRecord,
+          status: p1.status,
+          recordIndex: p1.recordIndex
+        });
+      }
+      return lines;
     }
   },
   methods: {
@@ -283,22 +422,68 @@ export default {
     showTrack(device) {
       this.currentDevice = device;
       this.trackDialogVisible = true;
+      this.activeRecordIndex = -1;
+      this.hoverPointIndex = -1;
       this.loadTrackRecords(device.id);
     },
     closeTrackDialog() {
       this.trackRecords = [];
       this.currentDevice = {};
+      this.activeRecordIndex = -1;
+      this.hoverPointIndex = -1;
     },
     loadTrackRecords(liftId) {
+      this.trackLoading = true;
       axios.get('/api/run_records', { params: { lift_id: liftId } }).then(res => {
         if (res.data.success) {
-          this.trackRecords = res.data.data;
+          this.trackRecords = res.data.data || [];
+        } else {
+          this.trackRecords = [];
         }
+      }).catch(() => {
+        this.trackRecords = [];
+        this.$message.error('加载轨迹数据失败');
+      }).finally(() => {
+        this.trackLoading = false;
       });
     },
     hasStopAtFloor(floor) {
       const actualFloor = this.totalFloors - floor + 1;
-      return this.trackRecords.some(r => r.start_floor === actualFloor || r.end_floor === actualFloor);
+      return this.trackRecords.some(r =>
+        (r.start_floor && r.start_floor === actualFloor) ||
+        (r.end_floor && r.end_floor === actualFloor)
+      );
+    },
+    getLineColor(status) {
+      return status === 1 ? '#67c23a' : '#f56c6c';
+    },
+    getPointColor(status, isStart) {
+      if (isStart) {
+        return '#ffffff';
+      }
+      return status === 1 ? '#67c23a' : '#f56c6c';
+    },
+    handlePointHover(index) {
+      this.hoverPointIndex = index;
+      const point = this.trackPointList[index];
+      if (point) {
+        this.activeRecordIndex = point.recordIndex;
+      }
+    },
+    handlePointLeave() {
+      this.hoverPointIndex = -1;
+      this.activeRecordIndex = -1;
+    },
+    handleTimelineHover(sortedIndex) {
+      this.activeRecordIndex = sortedIndex;
+    },
+    handleTimelineLeave() {
+      this.activeRecordIndex = -1;
+    },
+    getSortedIndex(originalIndex) {
+      const record = this.trackRecords[originalIndex];
+      if (!record) return -1;
+      return this.sortedTrackRecords.findIndex(r => r.id === record.id);
     }
   }
 };
@@ -437,7 +622,7 @@ export default {
 }
 
 .track-visual {
-  flex: 0 0 400px;
+  flex: 0 0 420px;
   display: flex;
   gap: 15px;
 }
@@ -446,6 +631,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .building-label {
@@ -461,17 +647,19 @@ export default {
   border: 2px solid #dcdfe6;
   border-radius: 4px;
   background: #fafafa;
+  overflow: hidden;
 }
 
 .floor {
   width: 50px;
-  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid #ebeef5;
   font-size: 11px;
   color: #909399;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
 }
 
 .floor:last-child {
@@ -488,6 +676,7 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .path-label {
@@ -502,22 +691,127 @@ export default {
   background: #fafafa;
   border: 1px solid #ebeef5;
   border-radius: 4px;
-  padding: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.path-loading,
+.path-empty,
+.timeline-loading,
+.timeline-empty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.path-loading i,
+.path-empty i,
+.timeline-loading i,
+.timeline-empty i {
+  font-size: 32px;
+  color: #c0c4cc;
+}
+
+.path-loading i {
+  animation: rotate 1s linear infinite;
+}
+
+.timeline-loading,
+.timeline-empty {
+  position: relative;
+  padding: 40px 0;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .path-svg {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
-.path-point {
+.track-point {
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.point-label {
+  font-size: 11px;
+  fill: #606266;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.point-label.label-visible {
+  opacity: 1;
+}
+
+.line-active {
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 3px rgba(64, 158, 255, 0.5));
+}
+
+.path-legend {
+  display: flex;
+  gap: 15px;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #606266;
+}
+
+.legend-line {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.legend-line.normal {
+  background: #67c23a;
+}
+
+.legend-line.error {
+  background: #f56c6c;
+}
+
+.legend-line.idle {
+  background: #dcdfe6;
+  border-top: 1px dashed #dcdfe6;
+  background: repeating-linear-gradient(
+    to right,
+    #dcdfe6,
+    #dcdfe6 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  height: 2px;
 }
 
 .track-timeline {
   flex: 1;
   max-height: 450px;
   overflow-y: auto;
+  position: relative;
+  min-width: 0;
 }
 
 .timeline-title {
@@ -525,10 +819,34 @@ export default {
   color: #606266;
   margin-bottom: 10px;
   font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timeline-count {
+  font-size: 12px;
+  color: #909399;
+  font-weight: normal;
 }
 
 .timeline-card {
   margin-bottom: 0;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.timeline-card:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+.timeline-card.card-active {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+
+.timeline-item-active .el-timeline-item__node {
+  transform: scale(1.3);
 }
 
 .timeline-record .record-header {
