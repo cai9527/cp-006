@@ -111,11 +111,15 @@
         </el-main>
       </el-container>
     </el-container>
+    <alarm-notifier v-if="!isLoginPage"></alarm-notifier>
   </div>
 </template>
 
 <script>
 import { getUser, getRoleText, isAdmin, logout as clearUser } from './utils/permissions';
+import AlarmNotifier from './components/AlarmNotifier.vue';
+import alarmNotifier from './utils/alarmNotifier';
+import axios from 'axios';
 
 const DEFAULT_SCALE = 1.0;
 const MIN_SCALE = 0.7;
@@ -124,9 +128,11 @@ const STEP = 0.1;
 const STORAGE_KEY = 'sidebar_scale';
 const BASE_SIDEBAR_WIDTH = 200;
 const BASE_CONTENT_PADDING = 20;
+const ALARM_POLL_INTERVAL = 15000;
 
 export default {
   name: 'App',
+  components: { AlarmNotifier },
   data() {
     return {
       currentUser: {
@@ -138,7 +144,9 @@ export default {
       sidebarScale: DEFAULT_SCALE,
       MIN_SCALE,
       MAX_SCALE,
-      DEFAULT_SCALE
+      DEFAULT_SCALE,
+      lastAlarmId: 0,
+      alarmPollTimer: null
     };
   },
   computed: {
@@ -165,6 +173,7 @@ export default {
   watch: {
     $route() {
       this.loadUser();
+      this.handleAlarmPolling();
     },
     sidebarScale(val) {
       try {
@@ -230,7 +239,56 @@ export default {
     logout() {
       clearUser();
       this.currentUser = { id: null, username: '', name: '', role: null };
+      this.stopAlarmPolling();
       this.$router.push('/login');
+    },
+    handleAlarmPolling() {
+      if (this.isLoginPage) {
+        this.stopAlarmPolling();
+      } else {
+        this.startAlarmPolling();
+      }
+    },
+    startAlarmPolling() {
+      if (this.alarmPollTimer) return;
+      this.pollAlarms();
+      this.alarmPollTimer = setInterval(() => {
+        this.pollAlarms();
+      }, ALARM_POLL_INTERVAL);
+    },
+    stopAlarmPolling() {
+      if (this.alarmPollTimer) {
+        clearInterval(this.alarmPollTimer);
+        this.alarmPollTimer = null;
+      }
+    },
+    pollAlarms() {
+      axios.get('/api/alarms', { params: { status: 0 } }).then(res => {
+        if (!res.data.success) return;
+        const newAlarms = res.data.data.filter(a => a.id > this.lastAlarmId);
+        if (this.lastAlarmId === 0) {
+          if (newAlarms.length) {
+            this.lastAlarmId = Math.max(...newAlarms.map(a => a.id));
+          }
+          return;
+        }
+        newAlarms.forEach(alarm => {
+          alarmNotifier.$emit(alarmNotifier.NOTIFY_EVENT, {
+            id: alarm.id,
+            level: alarm.level === 1 ? 1 : 2,
+            title: alarm.lift_name + ' - ' + this.getAlarmTypeText(alarm.type),
+            description: alarm.message,
+            created_at: alarm.created_at
+          });
+        });
+        if (newAlarms.length) {
+          this.lastAlarmId = Math.max(...newAlarms.map(a => a.id));
+        }
+      }).catch(() => {});
+    },
+    getAlarmTypeText(type) {
+      var types = ['', '超载报警', '超速报警', '故障报警', '维护提醒'];
+      return types[type] || '未知报警';
     }
   }
 };
